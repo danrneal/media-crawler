@@ -1,0 +1,6 @@
+-r requirements.txt
+black==22.6.0
+flake8==4.0.1
+isort==5.10.1
+pep8-naming==0.13.1
+pylint==2.14.5
