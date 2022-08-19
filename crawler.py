@@ -12,7 +12,7 @@ from ratelimit import limits, sleep_and_retry
 from requests_html import HTMLSession
 from titlecase import titlecase
 
-SHEET_ID = os.environ["SPREADSHEET_ID"]
+SPREADSHEET_ID = os.environ["SPREADSHEET_ID"]
 SHEETS_RATE_LIMIT = 50
 NYT_START_DATE = "2011-02-13"
 NYT_API_KEY = os.environ["NYT_API_KEY"]
@@ -32,12 +32,12 @@ EXCEPTIONS = [
 
 
 class Sheets:
-    def __init__(self, sheet_id):
-        self.sheet_id = sheet_id
-        self.sheet = self._create_sheets_service()
-        self.headers = {}
+    def __init__(self, spreadsheet_id):
+        self.spreadsheet_id = spreadsheet_id
+        self.spreadsheet = self._create_spreadsheets_service()
+        self.sheets = self._load_spreadsheet(spreadsheet_id)
 
-    def _create_sheets_service(self):
+    def _create_spreadsheets_service(self):
         creds = None
         scopes = ["https://www.googleapis.com/auth/spreadsheets"]
         if os.path.exists("token.json"):
@@ -60,46 +60,88 @@ class Sheets:
 
         return sheet
 
-    def load_sheet(self, sheet_name):
-        data = []
-        result = (
-            self.sheet.values()
-            .get(spreadsheetId=self.sheet_id, range=sheet_name)
-            .execute()
-        )
-        rows = result.get("values")
-        headers = [header.lower() for header in rows[0]]
-        self.headers[sheet_name] = headers
-        for row in rows[1:]:
-            row.extend([""] * (len(headers) - len(row)))
-            data.append(dict(zip(headers, row)))
+    def _load_spreadsheet(self, spreadsheet_id):
+        sheets = {}
+        result = self.spreadsheet.get(
+            spreadsheetId=spreadsheet_id, ranges=[], includeGridData=True
+        ).execute()
+        for sheet in result.get("sheets"):
+            properties = sheet.get("properties")
+            title = properties.get("title")
+            sheet_id = properties.get("sheetId")
+            data = sheet.get("data")[0]
+            row_data = data.get("rowData")
+            header_values = row_data[0].get("values")
+            headers = [
+                header_value.get("formattedValue").lower()
+                for header_value in header_values
+            ]
+            data = []
+            for row_data in row_data[1:]:
+                values = row_data.get("values")
+                row = [value.get("formattedValue") for value in values]
+                row.extend([""] * (len(headers) - len(row)))
+                if any(row):
+                    data.append(dict(zip(headers, row)))
 
-        return data
+            sheets[title] = {
+                "sheet_id": sheet_id,
+                "headers": headers,
+                "data": data,
+            }
+
+        return sheets
 
     @sleep_and_retry
-    @limits(calls=SHEETS_RATE_LIMIT, period=60)
+    @limits(calls=SHEETS_RATE_LIMIT / 2, period=60)
     def append_to_sheet(self, data, sheet_name):
-        headers = self.headers[sheet_name]
+        headers = self.sheets[sheet_name]["headers"]
         values = []
         for row in data:
             values.append([row.get(header, "") for header in headers])
 
         payload = {"values": values}
-        self.sheet.values().append(
-            spreadsheetId=self.sheet_id,
+        self.spreadsheet.values().append(
+            spreadsheetId=self.spreadsheet_id,
             range=sheet_name,
             valueInputOption="USER_ENTERED",
+            body=payload,
+        ).execute()
+        self._sort_sheet("Date", sheet_name)
+
+    def _sort_sheet(self, sort_header, sheet_name):
+        sheet = self.sheets[sheet_name]
+        sheet_id = sheet["sheet_id"]
+        headers = sheet["headers"]
+        sort_index = headers.index(sort_header.lower())
+        request = {
+            "sortRange": {
+                "range": {
+                    "sheetId": sheet_id,
+                    "startRowIndex": 1,
+                },
+                "sortSpecs": [
+                    {
+                        "dimensionIndex": sort_index,
+                        "sortOrder": "DESCENDING",
+                    }
+                ],
+            }
+        }
+        payload = {"requests": [request]}
+        self.spreadsheet.batchUpdate(
+            spreadsheetId=self.spreadsheet_id,
             body=payload,
         ).execute()
 
 
 def main():
-    sheets = Sheets(SHEET_ID)
-    books = sheets.load_sheet("Books")
+    sheets = Sheets(SPREADSHEET_ID)
+    books = sheets.sheets["Books"]["data"]
     get_nyt_best_sellers(books, sheets)
-    movies = sheets.load_sheet("Movies")
+    movies = sheets.sheets["Movies"]["data"]
     get_box_office_number_ones(movies, sheets)
-    music = sheets.load_sheet("Music")
+    music = sheets.sheets["Music"]["data"]
     get_hot_100_number_ones(music, sheets)
 
 
