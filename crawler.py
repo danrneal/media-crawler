@@ -293,7 +293,12 @@ def scrape_hot_100_wiki(year, session):
         f"List_of_Billboard_Hot_100_number_ones_of_{year}"
     )
     response = session.get(url).html
-    rows = response.find("table")[-1].find("tr")
+    tables = response.find("table")
+    for table in tables:
+        rows = table.find("tr")
+        if rows[0].find("th, td")[0].text == "No.":
+            break
+
     song_rowspan = 1
     artist_rowspan = 1
     for row in rows[1:]:
