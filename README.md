@@ -28,8 +28,8 @@ Set up your environment variables:
 
 ```bash
 touch .env
-echo NYT_API_KEY="XXX" >> .env
-echo SPREADSHEET_ID="XXX" >> .env
+echo export NYT_API_KEY="XXX" >> .env
+echo export SPREADSHEET_ID="XXX" >> .env
 ```
 
 ## Usage
