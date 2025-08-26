@@ -50,7 +50,7 @@ class Sheets:
                 flow = InstalledAppFlow.from_client_secrets_file(
                     "credentials.json", scopes
                 )
-                creds = flow.run_local_server(port=0)
+                creds = flow.run_console()
 
             with open("token.json", "w", encoding="utf8") as token:
                 token.write(creds.to_json())
