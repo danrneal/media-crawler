@@ -34,7 +34,7 @@ echo export SPREADSHEET_ID="XXX" >> .env
 
 ## Usage
 
-Make sure you are in the virtual environment (you should see (env) before your command prompt). If not `source /env/bin/activate` to enter it.
+Make sure you are in the virtual environment (you should see (env) before your command prompt). If not `source env/bin/activate` to enter it.
 
 Make sure .env variables are set:
 
