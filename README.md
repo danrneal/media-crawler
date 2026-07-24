@@ -21,8 +21,9 @@ pip install -r requirements.txt
 ```
 
 Obtain a NYT API key [here](https://developer.nytimes.com/get-started).
-Follow the instructions [here](https://developers.google.com/workspace/guides/create-project) to create a Google Cloud project and enable the Sheets API
-Follow the instructions [here](https://developers.google.com/workspace/guides/create-credentials#oauth-client-id) to create and download OAuth client ID credentials.  Rename this file as `credentials.json` in the main directory.
+Follow the instructions [here](https://developers.google.com/workspace/guides/create-project) to create a Google Cloud project and enable the Sheets API.
+Follow the instructions [here](https://cloud.google.com/iam/docs/keys-create-delete) to create a Service Account, generate a JSON key, and download it. Rename this file to `credentials.json` in the main directory.
+**Important:** You must share your target Google Sheet with the email address of the Service Account (giving it Editor access) so that the script can write to it.
 
 Set up your environment variables:
 

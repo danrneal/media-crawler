@@ -4,9 +4,7 @@ from datetime import datetime
 
 import requests
 from dateutil.parser import parse as dateparse
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from ratelimit import limits, sleep_and_retry
 from requests_html import HTMLSession
@@ -38,22 +36,10 @@ class Sheets:
         self.sheets = self._load_spreadsheet(spreadsheet_id)
 
     def _create_spreadsheets_service(self):
-        creds = None
         scopes = ["https://www.googleapis.com/auth/spreadsheets"]
-        if os.path.exists("token.json"):
-            creds = Credentials.from_authorized_user_file("token.json", scopes)
-
-        if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    "credentials.json", scopes
-                )
-                creds = flow.run_console()
-
-            with open("token.json", "w", encoding="utf8") as token:
-                token.write(creds.to_json())
+        creds = service_account.Credentials.from_service_account_file(
+            "credentials.json", scopes=scopes
+        )
 
         service = build("sheets", "v4", credentials=creds)
         sheet = service.spreadsheets()
